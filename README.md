@@ -38,7 +38,7 @@ npm run dev
 ## Déploiement Vercel
 
 1. Importer le dépôt, définir les variables d’environnement (dont `CRON_SECRET`).
-2. Vercel envoie les crons avec l’en-tête `Authorization: Bearer <CRON_SECRET>` vers `/api/cron/scheduled` (voir `vercel.json`, planification chaque minute).
+2. Vercel envoie les crons avec l’en-tête `Authorization: Bearer <CRON_SECRET>` vers `/api/cron/scheduled` (voir `vercel.json`). **Plan Hobby** : au plus **une** exécution par jour — le projet utilise `0 0 * * *` (tous les jours à 00:00 **UTC**). Les messages planifiés ne partent qu’à l’heure correspondante à ce moment-là en Europe/Paris. Pour un déclenchement plus fréquent, passer en **Pro** ou appeler l’URL du cron via un service externe.
 3. Les heures planifiées sont comparées en **Europe/Paris** ; le champ `days` est une liste `0`–`6` (dimanche–samedi), séparée par des virgules.
 
 ## Structure
