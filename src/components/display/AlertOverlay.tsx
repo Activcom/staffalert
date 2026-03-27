@@ -1,0 +1,41 @@
+"use client";
+
+import type { AlertRow } from "@/lib/types/database";
+import { useAlertBeep } from "./useAlertBeep";
+
+type Props = {
+  alert: AlertRow;
+  onDismiss: () => void;
+};
+
+export function AlertOverlay({ alert, onDismiss }: Props) {
+  const urgent = alert.type === "urgent";
+  useAlertBeep(urgent);
+
+  const bgClass = urgent
+    ? "animate-pulse-urgent"
+    : "bg-emerald-600";
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center gap-10 px-6 ${bgClass}`}
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="alert-title"
+    >
+      <p
+        id="alert-title"
+        className="max-w-[95vw] text-center text-5xl font-bold leading-tight text-white sm:text-6xl md:text-7xl lg:text-8xl"
+      >
+        {alert.message}
+      </p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="rounded-2xl bg-white/95 px-14 py-5 text-2xl font-semibold text-slate-900 shadow-lg transition hover:bg-white sm:text-3xl"
+      >
+        J&apos;ai compris
+      </button>
+    </div>
+  );
+}
