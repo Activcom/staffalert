@@ -12,7 +12,7 @@ create table if not exists public.scheduled_messages (
   id uuid primary key default gen_random_uuid(),
   message text not null,
   type text not null check (type in ('routine', 'urgent')),
-  days text not null default '0,1,2,3,4,5,6',
+  days integer[] not null default '{0,1,2,3,4,5,6}'::integer[],
   time text not null default '09:00',
   active boolean not null default true
 );

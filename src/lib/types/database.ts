@@ -13,7 +13,8 @@ export interface ScheduledMessageRow {
   id: string;
   message: string;
   type: AlertType;
-  days: string;
+  /** Jours 0–6 (dim–sam), stockés en PostgreSQL comme integer[] */
+  days: number[];
   time: string;
   active: boolean;
 }

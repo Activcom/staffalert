@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
-import { getParisHM, getParisWeekday, parseDaysCsv } from "@/lib/time/paris";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { getParisHM, getParisWeekday, normalizeScheduledDaysToNumbers } from "@/lib/time/paris";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceRoleClient();
   const now = new Date();
   const hm = getParisHM(now);
   const weekday = getParisWeekday(now);
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
   const toFire = (rows ?? []).filter((row) => {
     if (row.time !== hm) return false;
-    const allowed = parseDaysCsv(row.days);
+    const allowed = normalizeScheduledDaysToNumbers(row.days);
     return allowed.includes(weekday);
   });
 

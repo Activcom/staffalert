@@ -1,7 +1,17 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
+import {
+  deleteScheduledMessage,
+  insertAlert,
+  insertScheduledMessage,
+  listScheduledMessages,
+  setScheduledActive,
+  updateScheduledMessage,
+} from "@/app/actions/admin-data";
+import { reloadPostgrestSchema } from "@/app/actions/reload-postgrest-schema";
+import { isPostgrestSchemaCacheError } from "@/lib/supabase/schema-cache-error";
 import type { AlertType, ScheduledMessageRow } from "@/lib/types/database";
+import { formatDaysFieldForInput } from "@/lib/time/paris";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 const PIN = "1234";
@@ -9,7 +19,16 @@ const STORAGE_KEY = "staffalert_admin_ok";
 
 const DAY_LABELS = "0=dim, 1=lun, 2=mar, 3=mer, 4=jeu, 5=ven, 6=sam";
 
-function emptyForm(): Omit<ScheduledMessageRow, "id"> {
+/** Formulaire : `days` reste une chaîne saisie (convertie en integer[] côté serveur). */
+type ScheduledDraft = {
+  message: string;
+  type: AlertType;
+  days: string;
+  time: string;
+  active: boolean;
+};
+
+function emptyForm(): ScheduledDraft {
   return {
     message: "",
     type: "routine",
@@ -32,29 +51,49 @@ export function AdminClient() {
   const [rows, setRows] = useState<ScheduledMessageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [schemaReloadBusy, setSchemaReloadBusy] = useState(false);
+  const [schemaReloadHint, setSchemaReloadHint] = useState<string | null>(null);
 
   const [newRow, setNewRow] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<Omit<ScheduledMessageRow, "id"> | null>(null);
+  const [editDraft, setEditDraft] = useState<ScheduledDraft | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (sessionStorage.getItem(STORAGE_KEY) === "1") setUnlocked(true);
   }, []);
 
-  const loadScheduled = useCallback(async () => {
+  const loadScheduled = useCallback(async (): Promise<boolean> => {
     setListError(null);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("scheduled_messages")
-      .select("*")
-      .order("time", { ascending: true });
+    const { rows, error } = await listScheduledMessages();
     if (error) {
-      setListError(error.message);
-      return;
+      setListError(error);
+      return false;
     }
-    setRows((data ?? []) as ScheduledMessageRow[]);
+    setRows(rows ?? []);
+    return true;
   }, []);
+
+  const schemaListIssue = Boolean(listError && isPostgrestSchemaCacheError(listError));
+
+  const reloadSchemaAndRetry = useCallback(async () => {
+    setSchemaReloadHint(null);
+    setSchemaReloadBusy(true);
+    try {
+      const result = await reloadPostgrestSchema();
+      if (!result.ok) {
+        setSchemaReloadHint(result.message);
+        return;
+      }
+      setSchemaReloadHint("Cache API mis à jour. Rechargement de la liste…");
+      const ok = await loadScheduled();
+      if (ok) {
+        setSchemaReloadHint(null);
+      }
+    } finally {
+      setSchemaReloadBusy(false);
+    }
+  }, [loadScheduled]);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -84,15 +123,10 @@ export function AdminClient() {
     if (!sendMessage.trim()) return;
     setSendBusy(true);
     setSendOk(null);
-    const supabase = createClient();
-    const { error } = await supabase.from("alerts").insert({
-      message: sendMessage.trim(),
-      type: sendType,
-      status: "active",
-    });
+    const { error } = await insertAlert(sendMessage.trim(), sendType);
     setSendBusy(false);
     if (error) {
-      setSendOk(`Erreur: ${error.message}`);
+      setSendOk(`Erreur: ${error}`);
       return;
     }
     setSendMessage("");
@@ -102,16 +136,9 @@ export function AdminClient() {
   const addScheduled = async (e: FormEvent) => {
     e.preventDefault();
     if (!newRow.message.trim()) return;
-    const supabase = createClient();
-    const { error } = await supabase.from("scheduled_messages").insert({
-      message: newRow.message.trim(),
-      type: newRow.type,
-      days: newRow.days.replace(/\s/g, ""),
-      time: newRow.time,
-      active: newRow.active,
-    });
+    const { error } = await insertScheduledMessage(newRow);
     if (error) {
-      setListError(error.message);
+      setListError(error);
       return;
     }
     setNewRow(emptyForm());
@@ -119,13 +146,9 @@ export function AdminClient() {
   };
 
   const toggleActive = async (row: ScheduledMessageRow) => {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("scheduled_messages")
-      .update({ active: !row.active })
-      .eq("id", row.id);
+    const { error } = await setScheduledActive(row.id, !row.active);
     if (error) {
-      setListError(error.message);
+      setListError(error);
       return;
     }
     void loadScheduled();
@@ -133,10 +156,9 @@ export function AdminClient() {
 
   const removeRow = async (id: string) => {
     if (!confirm("Supprimer ce message planifié ?")) return;
-    const supabase = createClient();
-    const { error } = await supabase.from("scheduled_messages").delete().eq("id", id);
+    const { error } = await deleteScheduledMessage(id);
     if (error) {
-      setListError(error.message);
+      setListError(error);
       return;
     }
     void loadScheduled();
@@ -147,7 +169,7 @@ export function AdminClient() {
     setEditDraft({
       message: row.message,
       type: row.type,
-      days: row.days,
+      days: formatDaysFieldForInput(row.days),
       time: row.time,
       active: row.active,
     });
@@ -160,19 +182,9 @@ export function AdminClient() {
 
   const saveEdit = async () => {
     if (!editingId || !editDraft) return;
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("scheduled_messages")
-      .update({
-        message: editDraft.message.trim(),
-        type: editDraft.type,
-        days: editDraft.days.replace(/\s/g, ""),
-        time: editDraft.time,
-        active: editDraft.active,
-      })
-      .eq("id", editingId);
+    const { error } = await updateScheduledMessage(editingId, editDraft);
     if (error) {
-      setListError(error.message);
+      setListError(error);
       return;
     }
     cancelEdit();
@@ -297,7 +309,7 @@ export function AdminClient() {
           <div className="flex flex-wrap gap-3">
             <input
               type="text"
-              placeholder="Jours (ex: 1,2,3,4,5)"
+              placeholder="1,2,3,4,5"
               className="min-w-[200px] flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
               value={newRow.days}
               onChange={(e) => setNewRow({ ...newRow, days: e.target.value })}
@@ -322,12 +334,50 @@ export function AdminClient() {
           </button>
         </form>
 
-        {listError && <p className="mb-4 text-sm text-red-400">{listError}</p>}
+        {schemaListIssue && (
+          <div
+            className="mb-4 rounded-lg border border-amber-500/50 bg-amber-950/30 p-4 text-amber-100"
+            role="status"
+          >
+            <p className="font-medium text-amber-50">
+              L&apos;API Supabase ne voit pas encore la table (cache schéma PostgREST).
+            </p>
+            <p className="mt-2 text-sm text-amber-200/90">{listError}</p>
+            {schemaReloadHint && (
+              <p className="mt-2 text-sm text-amber-100/90">{schemaReloadHint}</p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={schemaReloadBusy}
+                onClick={() => void reloadSchemaAndRetry()}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-amber-950 hover:bg-amber-500 disabled:opacity-50"
+              >
+                {schemaReloadBusy ? "Rechargement…" : "Rafraîchir le cache API et réessayer"}
+              </button>
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-amber-200/75">
+              Sans clé « service_role » sur le serveur : ouvrez Supabase → SQL et exécutez{" "}
+              <code className="rounded bg-black/40 px-1 py-0.5 font-mono text-amber-50">
+                SELECT pg_notify(&apos;pgrst&apos;, &apos;reload schema&apos;);
+              </code>{" "}
+              puis réessayez. Pour le bouton ci-dessus, ajoutez{" "}
+              <code className="rounded bg-black/40 px-1 font-mono">SUPABASE_SERVICE_ROLE_KEY</code>{" "}
+              (Vercel / .env.local) et la fonction SQL{" "}
+              <code className="rounded bg-black/40 px-1 font-mono">reload_postgrest_schema</code>{" "}
+              (<code className="rounded bg-black/40 px-1 font-mono">002_reload_postgrest_schema.sql</code>
+              ).
+            </p>
+          </div>
+        )}
+        {listError && !schemaListIssue && (
+          <p className="mb-4 text-sm text-red-400">{listError}</p>
+        )}
         {loading ? (
           <p className="text-slate-400">Chargement…</p>
-        ) : rows.length === 0 ? (
+        ) : !listError && rows.length === 0 ? (
           <p className="text-slate-400">Aucun message planifié.</p>
-        ) : (
+        ) : !listError && rows.length > 0 ? (
           <ul className="flex flex-col gap-4">
             {rows.map((row) => (
               <li
@@ -404,7 +454,8 @@ export function AdminClient() {
                     <div>
                       <p className="font-medium text-white">{row.message}</p>
                       <p className="mt-1 text-sm text-slate-400">
-                        {row.type === "urgent" ? "URGENT" : "ROUTINE"} · {row.time} · jours {row.days} ·{" "}
+                        {row.type === "urgent" ? "URGENT" : "ROUTINE"} · {row.time} · jours{" "}
+                        {formatDaysFieldForInput(row.days)} ·{" "}
                         {row.active ? "actif" : "inactif"}
                       </p>
                     </div>
@@ -436,7 +487,7 @@ export function AdminClient() {
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
       </section>
     </main>
   );
