@@ -12,42 +12,55 @@ const MESSAGES = [
 const SINGLE_MS = 2000;
 const ALL_VISIBLE_MS = 15000;
 const FADE_MS = 800;
-/** After 4 singles (4×2s), show all together */
-const PHASE1_MS = MESSAGES.length * SINGLE_MS;
+/** Durée pour afficher les 4 phrases une par une (4 × 2 s) */
+const REVEAL_TOTAL_MS = MESSAGES.length * SINGLE_MS;
 
-type Phase = "single" | "all" | "fade";
+type SubPhase = "reveal" | "hold" | "fade";
+
+const lineClass =
+  "text-center text-2xl font-medium text-slate-200 sm:text-3xl";
 
 export function MotivationalMessages() {
   const [cycle, setCycle] = useState(0);
-  const [phase, setPhase] = useState<Phase>("single");
-  const [singleIndex, setSingleIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(1);
+  const [subPhase, setSubPhase] = useState<SubPhase>("reveal");
 
   useEffect(() => {
-    setPhase("single");
-    setSingleIndex(0);
-    const t1 = window.setTimeout(() => setPhase("all"), PHASE1_MS);
-    const t2 = window.setTimeout(() => setPhase("fade"), PHASE1_MS + ALL_VISIBLE_MS);
-    const t3 = window.setTimeout(() => {
-      setCycle((c) => c + 1);
-    }, PHASE1_MS + ALL_VISIBLE_MS + FADE_MS);
+    setVisibleCount(1);
+    setSubPhase("reveal");
+
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    for (let next = 2; next <= MESSAGES.length; next++) {
+      timeouts.push(
+        window.setTimeout(() => setVisibleCount(next), SINGLE_MS * (next - 1))
+      );
+    }
+
+    timeouts.push(
+      window.setTimeout(() => setSubPhase("hold"), REVEAL_TOTAL_MS)
+    );
+
+    timeouts.push(
+      window.setTimeout(
+        () => setSubPhase("fade"),
+        REVEAL_TOTAL_MS + ALL_VISIBLE_MS
+      )
+    );
+
+    timeouts.push(
+      window.setTimeout(
+        () => setCycle((c) => c + 1),
+        REVEAL_TOTAL_MS + ALL_VISIBLE_MS + FADE_MS
+      )
+    );
+
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
+      timeouts.forEach(clearTimeout);
     };
   }, [cycle]);
 
-  useEffect(() => {
-    if (phase !== "single") return;
-    if (singleIndex >= MESSAGES.length - 1) return;
-    const id = window.setTimeout(() => {
-      setSingleIndex((i) => i + 1);
-    }, SINGLE_MS);
-    return () => clearTimeout(id);
-  }, [phase, singleIndex]);
-
-  const visibleOpacity =
-    phase === "fade" ? "opacity-0" : "opacity-100";
+  const visibleOpacity = subPhase === "fade" ? "opacity-0" : "opacity-100";
   const transitionClass = `transition-opacity duration-[800ms] ${visibleOpacity}`;
 
   return (
@@ -55,36 +68,25 @@ export function MotivationalMessages() {
       className={`pointer-events-none ${transitionClass}`}
       aria-hidden
     >
-      {phase === "single" && (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-6">
-          {MESSAGES.map((text, i) => (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-6">
+        {MESSAGES.map((text, i) => {
+          if (i >= visibleCount) return null;
+          const slideIn =
+            subPhase === "reveal" && i === visibleCount - 1;
+          return (
             <div
-              key={`${cycle}-single-${i}`}
+              key={`${cycle}-${i}`}
               className={
-                i === singleIndex
-                  ? "animate-slide-in-top text-center text-3xl font-medium text-slate-200 sm:text-4xl"
-                  : "hidden"
+                slideIn
+                  ? `animate-slide-in-top ${lineClass}`
+                  : lineClass
               }
             >
               {text}
             </div>
-          ))}
-        </div>
-      )}
-
-      {(phase === "all" || phase === "fade") && (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-6">
-          {MESSAGES.map((text, i) => (
-            <div
-              key={`${cycle}-all-${i}`}
-              className="animate-slide-in-top text-center text-2xl font-medium text-slate-200 sm:text-3xl"
-              style={{ animationDelay: `${i * 80}ms` }}
-            >
-              {text}
-            </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
