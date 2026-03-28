@@ -29,7 +29,7 @@ export function MotivationalMessages() {
     setVisibleCount(1);
     setSubPhase("reveal");
 
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    const timeouts: number[] = [];
 
     for (let next = 2; next <= MESSAGES.length; next++) {
       timeouts.push(
@@ -56,7 +56,7 @@ export function MotivationalMessages() {
     );
 
     return () => {
-      timeouts.forEach(clearTimeout);
+      timeouts.forEach((id) => window.clearTimeout(id));
     };
   }, [cycle]);
 
