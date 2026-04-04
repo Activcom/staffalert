@@ -17,8 +17,9 @@ const REVEAL_TOTAL_MS = MESSAGES.length * SINGLE_MS;
 
 type SubPhase = "reveal" | "hold" | "fade";
 
+/** w-full + text-center : centrage horizontal fiable sur mobile (Safari / petits écrans). */
 const lineClass =
-  "text-center text-2xl font-medium text-slate-200 sm:text-3xl";
+  "w-full max-w-4xl text-center text-2xl font-medium text-slate-200 sm:text-3xl";
 
 export function MotivationalMessages() {
   const [cycle, setCycle] = useState(0);
@@ -65,10 +66,16 @@ export function MotivationalMessages() {
 
   return (
     <div
-      className={`pointer-events-none ${transitionClass}`}
+      className={`pointer-events-none w-full max-w-full ${transitionClass}`}
       aria-hidden
     >
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-6">
+      <div
+        className={
+          "mx-auto flex min-h-[40vh] w-full max-w-4xl flex-col items-center justify-center " +
+          "gap-4 px-6 pt-[max(0.5rem,env(safe-area-inset-top))] " +
+          "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        }
+      >
         {MESSAGES.map((text, i) => {
           if (i >= visibleCount) return null;
           const slideIn =

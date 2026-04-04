@@ -117,7 +117,7 @@ export function DisplayScreenClient() {
 
   return (
     <div className="relative min-h-screen bg-slate-950">
-      <div className="flex min-h-screen flex-col items-center justify-center gap-8 py-12">
+      <div className="flex min-h-screen w-full max-w-full flex-col items-center justify-center gap-8 py-12">
         <MotivationalMessages />
       </div>
       {active && <AlertOverlay alert={active} onDismiss={dismiss} />}
