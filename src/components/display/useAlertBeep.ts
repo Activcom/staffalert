@@ -30,16 +30,16 @@ export function useAlertBeep(active: boolean) {
 
     const beep = () => {
       const osc = ctx.createOscillator();
-      osc.type = "square";
-      osc.frequency.value = 880;
+      osc.type = "sine";
+      osc.frequency.value = 440;
       osc.connect(gain);
       osc.start();
-      osc.stop(ctx.currentTime + 0.12);
+      osc.stop(ctx.currentTime + 0.3);
     };
 
     void ctx.resume().then(() => {
       beep();
-      intervalId = setInterval(beep, 450);
+      intervalId = setInterval(beep, 800);
     });
 
     return () => {
