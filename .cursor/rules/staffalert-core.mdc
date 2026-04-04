@@ -1,0 +1,20 @@
+---
+description: Contraintes StaffAlert (Supabase anon, RLS alerts, build avant push)
+alwaysApply: true
+---
+
+# StaffAlert — règles projet
+
+## Supabase sur `/display-screen`
+
+- Le client navigateur (`src/lib/supabase/client.ts`, `DisplayScreenClient`, écran public) utilise **uniquement la clé `NEXT_PUBLIC_SUPABASE_ANON_KEY`** (ou équivalent anon via `@supabase/supabase-js`).
+- **Ne jamais** utiliser la **service role key** dans ce flux ni importer `createServiceRoleClient` pour l’affichage public.
+
+## Table `public.alerts` et RLS
+
+- Les politiques RLS pour le rôle **anon** doivent permettre au minimum **SELECT** et **UPDATE** (ex. dismiss → `status = 'dismissed'`).
+- **Ne pas supprimer** ni affaiblir ces politiques sans accord explicite ; les migrations ne doivent pas retirer les policies existantes sans les remplacer par l’équivalent.
+
+## Avant un push
+
+- Après des changements de code, exécuter **`npm run build`** et s’assurer que le build **réussit** avant de proposer ou effectuer un push.
