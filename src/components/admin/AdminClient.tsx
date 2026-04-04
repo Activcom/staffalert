@@ -44,7 +44,7 @@ export function AdminClient() {
   const [pinError, setPinError] = useState(false);
 
   const [sendMessage, setSendMessage] = useState("");
-  const [sendType, setSendType] = useState<AlertType>("routine");
+  const [sendType, setSendType] = useState<AlertType>("urgent");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendOk, setSendOk] = useState<string | null>(null);
 
@@ -247,19 +247,19 @@ export function AdminClient() {
               <input
                 type="radio"
                 name="sendType"
-                checked={sendType === "routine"}
-                onChange={() => setSendType("routine")}
+                checked={sendType === "urgent"}
+                onChange={() => setSendType("urgent")}
               />
-              ROUTINE
+              URGENT
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-slate-200">
               <input
                 type="radio"
                 name="sendType"
-                checked={sendType === "urgent"}
-                onChange={() => setSendType("urgent")}
+                checked={sendType === "routine"}
+                onChange={() => setSendType("routine")}
               />
-              URGENT
+              ROUTINE
             </label>
           </div>
           <button
