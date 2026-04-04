@@ -95,12 +95,21 @@ export function DisplayScreenClient() {
   const dismiss = useCallback(async () => {
     if (!active) return;
     const supabase = createClient();
-    const { error } = await supabase
+    // `.select()` après update : PostgREST peut renvoyer 200 sans erreur alors que 0 ligne
+    // n’a été mise à jour (RLS) — sans ça l’UI disparaît alors que la ligne reste "active".
+    const { data, error } = await supabase
       .from("alerts")
       .update({ status: "dismissed" })
-      .eq("id", active.id);
+      .eq("id", active.id)
+      .select("id,status");
+
     if (error) {
       console.error(LOG, "dismiss:", error.message);
+      return;
+    }
+    const updated = data?.[0];
+    if (!updated || updated.status !== "dismissed") {
+      console.error(LOG, "dismiss: aucune ligne mise à jour — vérifiez RLS sur public.alerts (migration 005)");
       return;
     }
     setActive(null);
