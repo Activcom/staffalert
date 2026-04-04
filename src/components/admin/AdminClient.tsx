@@ -450,16 +450,16 @@ export function AdminClient() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="font-medium text-white">{row.message}</p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words font-medium text-white">{row.message}</p>
                       <p className="mt-1 text-sm text-slate-400">
                         {row.type === "urgent" ? "URGENT" : "ROUTINE"} · {row.time} · jours{" "}
                         {formatDaysFieldForInput(row.days)} ·{" "}
                         {row.active ? "actif" : "inactif"}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex shrink-0 flex-nowrap gap-2">
                       <button
                         type="button"
                         onClick={() => toggleActive(row)}
