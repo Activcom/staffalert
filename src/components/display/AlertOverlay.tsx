@@ -12,9 +12,7 @@ export function AlertOverlay({ alert, onDismiss }: Props) {
   const urgent = alert.type === "urgent";
   useAlertBeep(urgent);
 
-  const bgClass = urgent
-    ? "animate-pulse-urgent"
-    : "bg-emerald-600";
+  const bgClass = urgent ? "animate-pulse-urgent" : "animate-pulse-routine";
 
   return (
     <div

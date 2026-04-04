@@ -17,10 +17,16 @@ const config: Config = {
           "0%, 100%": { backgroundColor: "rgb(185 28 28)" },
           "50%": { backgroundColor: "rgb(127 29 29)" },
         },
+        /** Même rythme que pulse-urgent, tons vert émeraude */
+        "pulse-routine": {
+          "0%, 100%": { backgroundColor: "rgb(5 150 105)" },
+          "50%": { backgroundColor: "rgb(4 120 87)" },
+        },
       },
       animation: {
         "slide-in-top": "slide-in-top 0.5s ease-out forwards",
         "pulse-urgent": "pulse-urgent 1s ease-in-out infinite",
+        "pulse-routine": "pulse-routine 1s ease-in-out infinite",
       },
     },
   },
