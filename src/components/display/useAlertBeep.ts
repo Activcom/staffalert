@@ -3,9 +3,8 @@
 import { useEffect, useRef } from "react";
 
 const BIP_DURATION_S = 0.15;
-const PAIR_GAP_MS = 1200;
-/** Durée d'une paire (660 Hz puis 880 Hz) + silence jusqu’à la paire suivante */
-const PAIR_CYCLE_MS = BIP_DURATION_S * 2 * 1000 + PAIR_GAP_MS;
+/** Temps entre le début de deux paires consécutives (660 Hz + 880 Hz). */
+const PAIR_INTERVAL_MS = 1500;
 
 /** Double bip (sine) via Web Audio API — alertes urgentes. */
 export function useAlertBeep(active: boolean) {
@@ -32,32 +31,32 @@ export function useAlertBeep(active: boolean) {
     gain.connect(ctx.destination);
 
     let intervalId: ReturnType<typeof setInterval>;
+    let secondBipTimeoutId: ReturnType<typeof setTimeout>;
+
+    const beepAtFreq = (hz: number) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = hz;
+      osc.connect(gain);
+      osc.start();
+      osc.stop(ctx.currentTime + BIP_DURATION_S);
+    };
 
     const playPair = () => {
-      const t0 = ctx.currentTime;
-
-      const first = ctx.createOscillator();
-      first.type = "sine";
-      first.frequency.value = 660;
-      first.connect(gain);
-      first.start(t0);
-      first.stop(t0 + BIP_DURATION_S);
-
-      const second = ctx.createOscillator();
-      second.type = "sine";
-      second.frequency.value = 880;
-      second.connect(gain);
-      second.start(t0 + BIP_DURATION_S);
-      second.stop(t0 + BIP_DURATION_S * 2);
+      beepAtFreq(660);
+      secondBipTimeoutId = setTimeout(() => {
+        beepAtFreq(880);
+      }, BIP_DURATION_S * 1000);
     };
 
     void ctx.resume().then(() => {
       playPair();
-      intervalId = setInterval(playPair, PAIR_CYCLE_MS);
+      intervalId = setInterval(playPair, PAIR_INTERVAL_MS);
     });
 
     return () => {
       clearInterval(intervalId);
+      clearTimeout(secondBipTimeoutId);
       void ctx.close();
       ctxRef.current = null;
     };
