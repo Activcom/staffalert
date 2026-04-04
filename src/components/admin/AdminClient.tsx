@@ -221,13 +221,23 @@ export function AdminClient() {
     <main className="mx-auto min-h-screen max-w-3xl px-6 py-10">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-white">Administration</h1>
-        <button
-          type="button"
-          onClick={logout}
-          className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
-        >
-          Verrouiller
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="https://staffalert.vercel.app/display-screen"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+          >
+            Écran d&apos;affichage
+          </a>
+          <button
+            type="button"
+            onClick={logout}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+          >
+            Déconnexion
+          </button>
+        </div>
       </header>
 
       <section className="mb-10 rounded-xl bg-slate-900 p-6 ring-1 ring-slate-700">
