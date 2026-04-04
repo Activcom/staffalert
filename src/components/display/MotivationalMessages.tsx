@@ -17,9 +17,8 @@ const REVEAL_TOTAL_MS = MESSAGES.length * SINGLE_MS;
 
 type SubPhase = "reveal" | "hold" | "fade";
 
-/** w-full + text-center : centrage horizontal fiable sur mobile (Safari / petits écrans). */
-const lineClass =
-  "w-full max-w-4xl text-center text-2xl font-medium text-slate-200 sm:text-3xl";
+/** w-full + text-center : centrage horizontal fiable sur mobile (conteneur parent max-w-4xl). */
+const lineClass = "w-full text-center text-2xl font-medium text-slate-200 sm:text-3xl";
 
 export function MotivationalMessages() {
   const [cycle, setCycle] = useState(0);

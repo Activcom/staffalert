@@ -29,7 +29,7 @@ export function getParisHM(d = new Date()): string {
   return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
 }
 
-export function parseDaysCsv(days: string): number[] {
+function parseDaysCsv(days: string): number[] {
   return days
     .split(",")
     .map((s) => parseInt(s.trim(), 10))

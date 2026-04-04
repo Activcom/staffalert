@@ -6,8 +6,6 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertOverlay } from "./AlertOverlay";
 import { MotivationalMessages } from "./MotivationalMessages";
 
-const LOG = "[staffalert-display]";
-
 async function fetchActiveAlert(): Promise<AlertRow | null> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -18,7 +16,6 @@ async function fetchActiveAlert(): Promise<AlertRow | null> {
     .limit(1);
 
   if (error) {
-    console.error(LOG, "select alerts:", error.message);
     return null;
   }
   const row = data?.[0];
@@ -34,14 +31,10 @@ export function DisplayScreenClient() {
   }, []);
 
   useEffect(() => {
-    console.info(LOG, "composant monté, chargement initial + abonnement Realtime");
-  }, []);
-
-  useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  /** Sans ceci, si Realtime est HS ou la page était ouverte avant l’alerte, rien ne se met à jour. */
+  /** Secours si Realtime (WebSocket) est bloqué ou instable (réseau, onglet en veille, etc.). */
   useEffect(() => {
     const id = window.setInterval(() => {
       void refresh();
@@ -78,12 +71,9 @@ export function DisplayScreenClient() {
           void refresh();
         }
       )
-      .subscribe((status, err) => {
+      .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          console.info(LOG, "Realtime OK:", topic);
           void refresh();
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn(LOG, "Realtime:", status, err?.message ?? "");
         }
       });
 
@@ -95,8 +85,6 @@ export function DisplayScreenClient() {
   const dismiss = useCallback(async () => {
     if (!active) return;
     const supabase = createClient();
-    // `.select()` après update : PostgREST peut renvoyer 200 sans erreur alors que 0 ligne
-    // n’a été mise à jour (RLS) — sans ça l’UI disparaît alors que la ligne reste "active".
     const { data, error } = await supabase
       .from("alerts")
       .update({ status: "dismissed" })
@@ -104,12 +92,10 @@ export function DisplayScreenClient() {
       .select("id,status");
 
     if (error) {
-      console.error(LOG, "dismiss:", error.message);
       return;
     }
     const updated = data?.[0];
     if (!updated || updated.status !== "dismissed") {
-      console.error(LOG, "dismiss: aucune ligne mise à jour — vérifiez RLS sur public.alerts (migration 005)");
       return;
     }
     setActive(null);

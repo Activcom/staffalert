@@ -1,9 +1,6 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * Client navigateur anon pour `/display-screen` : pas de session/cookies (Realtime plus fiable
- * que `createBrowserClient` @supabase/ssr sur une page publique). Singleton = une socket Realtime.
- */
+/** Client navigateur anon pour `/display-screen` : pas de session persistante. Singleton Realtime. */
 let browserClient: SupabaseClient | undefined;
 
 export function createClient(): SupabaseClient {
