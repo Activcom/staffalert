@@ -57,7 +57,7 @@ export function useAlertBeep(active: boolean) {
     const playPair = () => {
       if (!ctx || ctx.state !== "running") return;
       beepAtFreq(660);
-      secondBipTimeoutId = window.setTimeout(() => {
+      secondBipTimeoutId = setTimeout(() => {
         beepAtFreq(880);
       }, BIP_DURATION_S * 1000);
     };
@@ -66,7 +66,7 @@ export function useAlertBeep(active: boolean) {
       if (!ctx || ctx.state !== "running" || loopStartedRef.current) return;
       loopStartedRef.current = true;
       playPair();
-      intervalId = window.setInterval(playPair, PAIR_INTERVAL_MS);
+      intervalId = setInterval(playPair, PAIR_INTERVAL_MS);
     };
 
     /** À appeler depuis un geste utilisateur (Safari) ou après resume OK (Chrome). */
@@ -102,8 +102,8 @@ export function useAlertBeep(active: boolean) {
         window.removeEventListener(ev, onUnlock, { capture: true });
       });
       document.removeEventListener("visibilitychange", onVisibility);
-      if (intervalId !== undefined) window.clearInterval(intervalId);
-      if (secondBipTimeoutId !== undefined) window.clearTimeout(secondBipTimeoutId);
+      if (intervalId !== undefined) clearInterval(intervalId);
+      if (secondBipTimeoutId !== undefined) clearTimeout(secondBipTimeoutId);
       if (ctx) {
         void ctx.close();
       }
