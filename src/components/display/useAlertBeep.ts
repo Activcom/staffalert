@@ -3,15 +3,22 @@
 import { useEffect, useRef } from "react";
 
 const BIP_DURATION_S = 0.15;
-/** Temps entre le début de deux paires consécutives (660 Hz + 880 Hz). */
 const PAIR_INTERVAL_MS = 1500;
 
-/** Double bip (sine) via Web Audio API — alertes urgentes. */
+const UNLOCK_EVENTS = ["pointerdown", "touchstart", "click"] as const;
+
+/**
+ * Double bip (sine) — alertes urgentes.
+ * Safari / iOS : l’AudioContext reste souvent « suspended » tant que `resume()` n’est pas
+ * appelé dans une interaction utilisateur ; un `resume()` depuis un effet React ne suffit pas.
+ */
 export function useAlertBeep(active: boolean) {
   const ctxRef = useRef<AudioContext | null>(null);
+  const loopStartedRef = useRef(false);
 
   useEffect(() => {
     if (!active) {
+      loopStartedRef.current = false;
       if (ctxRef.current) {
         void ctxRef.current.close();
         ctxRef.current = null;
@@ -23,17 +30,22 @@ export function useAlertBeep(active: boolean) {
       window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
 
-    const ctx = new AudioContextClass();
-    ctxRef.current = ctx;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    let secondBipTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    let ctx: AudioContext | null = null;
+    let gain: GainNode | null = null;
 
-    const gain = ctx.createGain();
-    gain.gain.value = 0.12;
-    gain.connect(ctx.destination);
-
-    let intervalId: ReturnType<typeof setInterval>;
-    let secondBipTimeoutId: ReturnType<typeof setTimeout>;
+    const ensureGraph = () => {
+      if (ctx) return;
+      ctx = new AudioContextClass();
+      ctxRef.current = ctx;
+      gain = ctx.createGain();
+      gain.gain.value = 0.12;
+      gain.connect(ctx.destination);
+    };
 
     const beepAtFreq = (hz: number) => {
+      if (!ctx || !gain || ctx.state !== "running") return;
       const osc = ctx.createOscillator();
       osc.type = "sine";
       osc.frequency.value = hz;
@@ -43,21 +55,58 @@ export function useAlertBeep(active: boolean) {
     };
 
     const playPair = () => {
+      if (!ctx || ctx.state !== "running") return;
       beepAtFreq(660);
-      secondBipTimeoutId = setTimeout(() => {
+      secondBipTimeoutId = window.setTimeout(() => {
         beepAtFreq(880);
       }, BIP_DURATION_S * 1000);
     };
 
-    void ctx.resume().then(() => {
+    const startLoopIfRunning = () => {
+      if (!ctx || ctx.state !== "running" || loopStartedRef.current) return;
+      loopStartedRef.current = true;
       playPair();
-      intervalId = setInterval(playPair, PAIR_INTERVAL_MS);
+      intervalId = window.setInterval(playPair, PAIR_INTERVAL_MS);
+    };
+
+    /** À appeler depuis un geste utilisateur (Safari) ou après resume OK (Chrome). */
+    const tryResumeAndStart = () => {
+      ensureGraph();
+      if (!ctx) return;
+      void ctx.resume().then(() => {
+        startLoopIfRunning();
+      });
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible" && ctx) {
+        void ctx.resume();
+      }
+    };
+
+    const onUnlock = () => {
+      tryResumeAndStart();
+    };
+
+    UNLOCK_EVENTS.forEach((ev) => {
+      window.addEventListener(ev, onUnlock, { capture: true, passive: true });
     });
+    document.addEventListener("visibilitychange", onVisibility);
+
+    // Chrome : resume depuis l’effet suffit souvent. Safari : besoin d’un geste → onUnlock.
+    tryResumeAndStart();
 
     return () => {
-      clearInterval(intervalId);
-      clearTimeout(secondBipTimeoutId);
-      void ctx.close();
+      loopStartedRef.current = false;
+      UNLOCK_EVENTS.forEach((ev) => {
+        window.removeEventListener(ev, onUnlock, { capture: true });
+      });
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (intervalId !== undefined) window.clearInterval(intervalId);
+      if (secondBipTimeoutId !== undefined) window.clearTimeout(secondBipTimeoutId);
+      if (ctx) {
+        void ctx.close();
+      }
       ctxRef.current = null;
     };
   }, [active]);
