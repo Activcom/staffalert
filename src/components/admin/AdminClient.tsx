@@ -22,11 +22,55 @@ const STORAGE_KEY = "staffalert_admin_ok";
 
 const DAY_LABELS = "0=dim, 1=lun, 2=mar, 3=mer, 4=jeu, 5=ven, 6=sam";
 
-/** Formulaire : `days` reste une chaîne saisie (convertie en integer[] côté serveur). */
+const DAYS_PICKER_ORDER: { day: number; label: string }[] = [
+  { day: 1, label: "Lundi" },
+  { day: 2, label: "Mardi" },
+  { day: 3, label: "Mercredi" },
+  { day: 4, label: "Jeudi" },
+  { day: 5, label: "Vendredi" },
+  { day: 6, label: "Samedi" },
+  { day: 0, label: "Dimanche" },
+];
+
+function DaysPicker({
+  value,
+  onChange,
+}: {
+  value: number[];
+  onChange: (days: number[]) => void;
+}) {
+  const toggle = (day: number) => {
+    const has = value.includes(day);
+    const next = has
+      ? value.filter((d) => d !== day)
+      : [...value, day].sort((a, b) => a - b);
+    onChange(next);
+  };
+
+  return (
+    <div className="flex flex-wrap gap-x-5 gap-y-3">
+      {DAYS_PICKER_ORDER.map(({ day, label }) => (
+        <label
+          key={day}
+          className="flex cursor-pointer items-center gap-2 text-sm text-slate-200"
+        >
+          <input
+            type="checkbox"
+            checked={value.includes(day)}
+            onChange={() => toggle(day)}
+          />
+          {label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** Formulaire : `days` est un tableau d’entiers 0–6 (jours). */
 type ScheduledDraft = {
   message: string;
   type: AlertType;
-  days: string;
+  days: number[];
   time: string;
   active: boolean;
 };
@@ -35,7 +79,7 @@ function emptyForm(): ScheduledDraft {
   return {
     message: "",
     type: "routine",
-    days: "1,2,3,4,5",
+    days: [1, 2, 3, 4, 5],
     time: "09:00",
     active: true,
   };
@@ -236,7 +280,7 @@ export function AdminClient() {
     setEditDraft({
       message: row.message,
       type: row.type,
-      days: formatDaysFieldForInput(row.days),
+      days: Array.isArray(row.days) ? row.days : [],
       time: row.time,
       active: row.active,
     });
@@ -431,14 +475,11 @@ export function AdminClient() {
               URGENT
             </label>
           </div>
+          <DaysPicker
+            value={newRow.days}
+            onChange={(days) => setNewRow({ ...newRow, days })}
+          />
           <div className="flex flex-wrap gap-3">
-            <input
-              type="text"
-              placeholder="1,2,3,4,5"
-              className="min-w-[200px] flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
-              value={newRow.days}
-              onChange={(e) => setNewRow({ ...newRow, days: e.target.value })}
-            />
             <input
               type="time"
               className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
@@ -535,13 +576,11 @@ export function AdminClient() {
                         URGENT
                       </label>
                     </div>
+                    <DaysPicker
+                      value={editDraft.days}
+                      onChange={(days) => setEditDraft({ ...editDraft, days })}
+                    />
                     <div className="flex flex-wrap gap-3">
-                      <input
-                        type="text"
-                        className="min-w-[180px] flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
-                        value={editDraft.days}
-                        onChange={(e) => setEditDraft({ ...editDraft, days: e.target.value })}
-                      />
                       <input
                         type="time"
                         className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
