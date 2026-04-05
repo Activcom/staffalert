@@ -11,6 +11,7 @@ import {
 import { reloadPostgrestSchema } from "@/app/actions/reload-postgrest-schema";
 import { isPostgrestSchemaCacheError } from "@/lib/supabase/schema-cache-error";
 import type { AlertType, ScheduledMessageRow } from "@/lib/types/database";
+import { createClient } from "@/lib/supabase/client";
 import { formatDaysFieldForInput } from "@/lib/time/paris";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
@@ -57,6 +58,7 @@ export function AdminClient() {
   const [newRow, setNewRow] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ScheduledDraft | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -72,6 +74,18 @@ export function AdminClient() {
     }
     setRows(rows ?? []);
     return true;
+  }, []);
+
+  const fetchPendingCount = useCallback(async () => {
+    const supabase = createClient();
+    const { count, error } = await supabase
+      .from("alerts")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active");
+    if (error) {
+      return;
+    }
+    setPendingCount(count ?? 0);
   }, []);
 
   const schemaListIssue = Boolean(listError && isPostgrestSchemaCacheError(listError));
@@ -98,8 +112,37 @@ export function AdminClient() {
   useEffect(() => {
     if (!unlocked) return;
     setLoading(true);
+    void fetchPendingCount();
     void loadScheduled().finally(() => setLoading(false));
-  }, [unlocked, loadScheduled]);
+  }, [unlocked, loadScheduled, fetchPendingCount]);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    const supabase = createClient();
+    const topic = `alerts-${
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    }`;
+    const channel = supabase
+      .channel(topic, { config: { private: false } })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "alerts" },
+        () => {
+          void fetchPendingCount();
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void fetchPendingCount();
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [unlocked, fetchPendingCount]);
 
   const submitPin = (e: FormEvent) => {
     e.preventDefault();
@@ -222,6 +265,15 @@ export function AdminClient() {
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold text-white">Administration</h1>
         <div className="flex flex-wrap items-center gap-2">
+          {pendingCount === 0 ? (
+            <span className="rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white">
+              Aucun message en attente
+            </span>
+          ) : (
+            <span className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white">
+              {pendingCount} message(s) en attente de confirmation
+            </span>
+          )}
           <a
             href="https://staffalert.vercel.app/display-screen"
             target="_blank"
