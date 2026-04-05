@@ -479,7 +479,7 @@ export function AdminClient() {
             value={newRow.days}
             onChange={(days) => setNewRow({ ...newRow, days })}
           />
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <input
               type="time"
               className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
@@ -580,7 +580,7 @@ export function AdminClient() {
                       value={editDraft.days}
                       onChange={(days) => setEditDraft({ ...editDraft, days })}
                     />
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap items-center gap-4">
                       <input
                         type="time"
                         className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
