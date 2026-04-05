@@ -2,32 +2,32 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { AlertRow } from "@/lib/types/database";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertOverlay } from "./AlertOverlay";
 import { MotivationalMessages } from "./MotivationalMessages";
 
-async function fetchActiveAlert(): Promise<AlertRow | null> {
+async function fetchActiveAlerts(): Promise<AlertRow[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("alerts")
     .select("*")
     .eq("status", "active")
-    .order("created_at", { ascending: false })
-    .limit(1);
+    .order("created_at", { ascending: true });
 
   if (error) {
-    return null;
+    return [];
   }
-  const row = data?.[0];
-  return row ? (row as AlertRow) : null;
+  return (data ?? []) as AlertRow[];
 }
 
 export function DisplayScreenClient() {
-  const [active, setActive] = useState<AlertRow | null>(null);
+  const [queue, setQueue] = useState<AlertRow[]>([]);
+  const queueRef = useRef<AlertRow[]>([]);
+  queueRef.current = queue;
 
   const refresh = useCallback(async () => {
-    const row = await fetchActiveAlert();
-    setActive(row);
+    const rows = await fetchActiveAlerts();
+    setQueue(rows);
   }, []);
 
   useEffect(() => {
@@ -83,12 +83,13 @@ export function DisplayScreenClient() {
   }, [refresh]);
 
   const dismiss = useCallback(async () => {
-    if (!active) return;
+    const first = queueRef.current[0];
+    if (!first) return;
     const supabase = createClient();
     const { data, error } = await supabase
       .from("alerts")
       .update({ status: "dismissed" })
-      .eq("id", active.id)
+      .eq("id", first.id)
       .select("id,status");
 
     if (error) {
@@ -98,15 +99,23 @@ export function DisplayScreenClient() {
     if (!updated || updated.status !== "dismissed") {
       return;
     }
-    setActive(null);
-  }, [active]);
+    setQueue((prev) => (prev[0]?.id === first.id ? prev.slice(1) : prev));
+  }, []);
+
+  const current = queue[0];
 
   return (
     <div className="relative min-h-screen bg-slate-950">
       <div className="flex min-h-screen w-full max-w-full flex-col items-center justify-center gap-8 py-12">
         <MotivationalMessages />
       </div>
-      {active && <AlertOverlay alert={active} onDismiss={dismiss} />}
+      {current && (
+        <AlertOverlay
+          alert={current}
+          pendingCount={queue.length - 1}
+          onDismiss={dismiss}
+        />
+      )}
     </div>
   );
 }
