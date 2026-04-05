@@ -24,7 +24,7 @@ export function AlertOverlay({ alert, onDismiss, pendingCount = 0 }: Props) {
     >
       {pendingCount > 0 ? (
         <div
-          className="absolute left-1/2 top-4 z-[60] -translate-x-1/2 rounded-full bg-black/45 px-4 py-2 text-sm font-medium text-white sm:text-base"
+          className="absolute left-1/2 top-4 z-[60] inline-flex w-fit max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center justify-center rounded-full bg-black/45 px-4 py-2 text-center text-sm font-medium text-white sm:text-base"
           aria-live="polite"
         >
           +{pendingCount} message(s) en attente
