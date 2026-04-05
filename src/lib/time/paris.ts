@@ -36,18 +36,6 @@ function parseDaysCsv(days: string): number[] {
     .filter((n) => !Number.isNaN(n) && n >= 0 && n <= 6);
 }
 
-/** Entrée utilisateur « 1,2,3,4,5 » → jours 0–6 uniques triés (pour envoi à Supabase). */
-export function parseDaysInputToSortedUniqueArray(csv: string): number[] {
-  return [...new Set(parseDaysCsv(csv))].sort((a, b) => a - b);
-}
-
-/** Affichage édition : valeur API (tableau ou ancien texte) → chaîne « 1,2,3 ». */
-export function formatDaysFieldForInput(days: ScheduledMessageDays): string {
-  if (Array.isArray(days)) return days.join(",");
-  if (typeof days === "string") return days;
-  return "";
-}
-
 export type ScheduledMessageDays = number[] | string;
 
 /** Cron / lecture : accepte integer[] (PostgREST) ou texte CSV hérité. */
