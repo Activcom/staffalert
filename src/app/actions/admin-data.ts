@@ -35,6 +35,28 @@ export async function listScheduledMessages(): Promise<{
   }
 }
 
+export async function listRecentAlerts(): Promise<{
+  rows: { id: string; message: string }[] | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("alerts")
+      .select("id, message")
+      .order("created_at", { ascending: false })
+      .limit(4);
+    if (error) return { rows: null, error: error.message };
+    const rows = (data ?? []).map((r) => ({
+      id: String(r.id),
+      message: String(r.message ?? ""),
+    }));
+    return { rows, error: null };
+  } catch (e) {
+    return { rows: null, error: catchConfig(e) };
+  }
+}
+
 export async function insertAlert(
   message: string,
   type: AlertType

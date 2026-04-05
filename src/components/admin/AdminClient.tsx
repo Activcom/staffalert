@@ -4,6 +4,7 @@ import {
   deleteScheduledMessage,
   insertAlert,
   insertScheduledMessage,
+  listRecentAlerts,
   listScheduledMessages,
   setScheduledActive,
   updateScheduledMessage,
@@ -59,6 +60,7 @@ export function AdminClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ScheduledDraft | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [recentAlerts, setRecentAlerts] = useState<{ id: string; message: string }[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -88,6 +90,14 @@ export function AdminClient() {
     setPendingCount(count ?? 0);
   }, []);
 
+  const loadRecentAlerts = useCallback(async () => {
+    const { rows, error } = await listRecentAlerts();
+    if (error) {
+      return;
+    }
+    setRecentAlerts(rows ?? []);
+  }, []);
+
   const schemaListIssue = Boolean(listError && isPostgrestSchemaCacheError(listError));
 
   const reloadSchemaAndRetry = useCallback(async () => {
@@ -113,8 +123,9 @@ export function AdminClient() {
     if (!unlocked) return;
     setLoading(true);
     void fetchPendingCount();
+    void loadRecentAlerts();
     void loadScheduled().finally(() => setLoading(false));
-  }, [unlocked, loadScheduled, fetchPendingCount]);
+  }, [unlocked, loadScheduled, fetchPendingCount, loadRecentAlerts]);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -173,6 +184,7 @@ export function AdminClient() {
       return;
     }
     setSendMessage("");
+    void loadRecentAlerts();
     setSendOk("Alerte envoyée.");
   };
 
@@ -309,6 +321,27 @@ export function AdminClient() {
             value={sendMessage}
             onChange={(e) => setSendMessage(e.target.value)}
           />
+          {recentAlerts.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-slate-400">Messages récents :</p>
+              <ul className="flex flex-col gap-2">
+                {recentAlerts.reduce<{ id: string; message: string }[]>((acc, row) => {
+                  if (acc.some((x) => x.message === row.message)) return acc;
+                  return [...acc, row];
+                }, []).map((alert) => (
+                  <li key={alert.id}>
+                    <button
+                      type="button"
+                      className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-left text-sm text-slate-200 hover:bg-slate-700"
+                      onClick={() => setSendMessage(alert.message)}
+                    >
+                      {alert.message}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-4">
             <span className="text-sm text-slate-200">Type</span>
             <label className="flex cursor-pointer items-center gap-2 text-slate-200">
