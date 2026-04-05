@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  deleteAlert,
   deleteScheduledMessage,
   insertAlert,
   insertScheduledMessage,
@@ -97,6 +98,17 @@ export function AdminClient() {
     }
     setRecentAlerts(rows ?? []);
   }, []);
+
+  const removeRecentAlert = useCallback(
+    async (id: string) => {
+      const { error } = await deleteAlert(id);
+      if (error) {
+        return;
+      }
+      void loadRecentAlerts();
+    },
+    [loadRecentAlerts]
+  );
 
   const schemaListIssue = Boolean(listError && isPostgrestSchemaCacheError(listError));
 
@@ -330,13 +342,25 @@ export function AdminClient() {
                   return [...acc, row];
                 }, []).map((alert) => (
                   <li key={alert.id}>
-                    <button
-                      type="button"
-                      className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-left text-sm text-slate-200 hover:bg-slate-700"
-                      onClick={() => setSendMessage(alert.message)}
-                    >
-                      {alert.message}
-                    </button>
+                    <div className="flex w-full items-center justify-between rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700">
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left text-slate-200"
+                        onClick={() => setSendMessage(alert.message)}
+                      >
+                        {alert.message}
+                      </button>
+                      <button
+                        type="button"
+                        className="ml-2 flex-shrink-0 text-slate-400 hover:text-red-400"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void removeRecentAlert(alert.id);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

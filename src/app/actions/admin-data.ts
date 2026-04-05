@@ -45,6 +45,7 @@ export async function listRecentAlerts(): Promise<{
       .from("alerts")
       .select("id, message")
       .order("created_at", { ascending: false })
+      .eq("type", "urgent")
       .limit(4);
     if (error) return { rows: null, error: error.message };
     const rows = (data ?? []).map((r) => ({
@@ -54,6 +55,16 @@ export async function listRecentAlerts(): Promise<{
     return { rows, error: null };
   } catch (e) {
     return { rows: null, error: catchConfig(e) };
+  }
+}
+
+export async function deleteAlert(id: string): Promise<{ error: string | null }> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { error } = await supabase.from("alerts").delete().eq("id", id);
+    return { error: error?.message ?? null };
+  } catch (e) {
+    return { error: catchConfig(e) };
   }
 }
 
