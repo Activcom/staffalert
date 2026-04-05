@@ -79,7 +79,26 @@ export async function insertAlert(
       type,
       status: "active",
     });
-    return { error: error?.message ?? null };
+    if (error) {
+      return { error: error.message };
+    }
+    try {
+      const { data: keepRows } = await supabase
+        .from("alerts")
+        .select("id")
+        .eq("type", "urgent")
+        .order("created_at", { ascending: false })
+        .limit(4);
+      const ids = (keepRows ?? []).map((r) => String(r.id));
+      if (ids.length > 0) {
+        await supabase
+          .from("alerts")
+          .delete()
+          .eq("type", "urgent")
+          .not("id", "in", "(" + ids.join(",") + ")");
+      }
+    } catch {}
+    return { error: null };
   } catch (e) {
     return { error: catchConfig(e) };
   }
