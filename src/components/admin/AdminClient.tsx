@@ -475,11 +475,11 @@ export function AdminClient() {
               URGENT
             </label>
           </div>
-          <DaysPicker
-            value={newRow.days}
-            onChange={(days) => setNewRow({ ...newRow, days })}
-          />
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <DaysPicker
+              value={newRow.days}
+              onChange={(days) => setNewRow({ ...newRow, days })}
+            />
             <input
               type="time"
               className="w-fit rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
@@ -576,11 +576,11 @@ export function AdminClient() {
                         URGENT
                       </label>
                     </div>
-                    <DaysPicker
-                      value={editDraft.days}
-                      onChange={(days) => setEditDraft({ ...editDraft, days })}
-                    />
-                    <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <DaysPicker
+                        value={editDraft.days}
+                        onChange={(days) => setEditDraft({ ...editDraft, days })}
+                      />
                       <input
                         type="time"
                         className="w-fit rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
