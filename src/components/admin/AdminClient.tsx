@@ -482,7 +482,7 @@ export function AdminClient() {
           <div className="flex flex-wrap items-center gap-4">
             <input
               type="time"
-              className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
+              className="w-fit rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
               value={newRow.time}
               onChange={(e) => setNewRow({ ...newRow, time: e.target.value })}
             />
@@ -583,7 +583,7 @@ export function AdminClient() {
                     <div className="flex flex-wrap items-center gap-4">
                       <input
                         type="time"
-                        className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
+                        className="w-fit rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white"
                         value={editDraft.time}
                         onChange={(e) => setEditDraft({ ...editDraft, time: e.target.value })}
                       />
