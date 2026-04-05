@@ -14,7 +14,7 @@ import { reloadPostgrestSchema } from "@/app/actions/reload-postgrest-schema";
 import { isPostgrestSchemaCacheError } from "@/lib/supabase/schema-cache-error";
 import type { AlertType, ScheduledMessageRow } from "@/lib/types/database";
 import { createClient } from "@/lib/supabase/client";
-import { formatDaysFieldForInput } from "@/lib/time/paris";
+import { formatDaysToLabels } from "@/lib/time/paris";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 const PIN = "1234";
@@ -23,13 +23,13 @@ const STORAGE_KEY = "staffalert_admin_ok";
 const DAY_LABELS = "0=dim, 1=lun, 2=mar, 3=mer, 4=jeu, 5=ven, 6=sam";
 
 const DAYS_PICKER_ORDER: { day: number; label: string }[] = [
-  { day: 1, label: "Lundi" },
-  { day: 2, label: "Mardi" },
-  { day: 3, label: "Mercredi" },
-  { day: 4, label: "Jeudi" },
-  { day: 5, label: "Vendredi" },
-  { day: 6, label: "Samedi" },
-  { day: 0, label: "Dimanche" },
+  { day: 1, label: "L" },
+  { day: 2, label: "M" },
+  { day: 3, label: "Me" },
+  { day: 4, label: "J" },
+  { day: 5, label: "V" },
+  { day: 6, label: "S" },
+  { day: 0, label: "D" },
 ];
 
 function DaysPicker({
@@ -48,11 +48,11 @@ function DaysPicker({
   };
 
   return (
-    <div className="flex flex-wrap gap-x-5 gap-y-3">
+    <div className="flex flex-wrap gap-x-3 gap-y-2">
       {DAYS_PICKER_ORDER.map(({ day, label }) => (
         <label
           key={day}
-          className="flex cursor-pointer items-center gap-2 text-sm text-slate-200"
+          className="flex min-w-[2.5rem] cursor-pointer items-center gap-2 text-sm text-slate-200"
         >
           <input
             type="checkbox"
@@ -619,7 +619,7 @@ export function AdminClient() {
                       <p className="break-words font-medium text-white">{row.message}</p>
                       <p className="mt-1 text-sm text-slate-400">
                         {row.type === "urgent" ? "URGENT" : "ROUTINE"} · {row.time} · jours{" "}
-                        {formatDaysFieldForInput(row.days)} ·{" "}
+                        {formatDaysToLabels(row.days)} ·{" "}
                         {row.active ? "actif" : "inactif"}
                       </p>
                     </div>

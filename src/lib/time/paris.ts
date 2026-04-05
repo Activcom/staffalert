@@ -62,3 +62,26 @@ export function normalizeScheduledDaysToNumbers(days: ScheduledMessageDays | unk
   }
   return [];
 }
+
+const FORMAT_DAYS_LABEL_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+
+const FORMAT_DAYS_ABBREV: Record<number, string> = {
+  0: "D",
+  1: "L",
+  2: "M",
+  3: "Me",
+  4: "J",
+  5: "V",
+  6: "S",
+};
+
+/** Affichage liste : jours → abréviations « L, M, Me, … » (ordre lundi → dimanche). */
+export function formatDaysToLabels(days: ScheduledMessageDays | unknown): string {
+  const nums = normalizeScheduledDaysToNumbers(days);
+  const sorted = [...new Set(nums)].sort(
+    (a, b) =>
+      FORMAT_DAYS_LABEL_ORDER.indexOf(a as (typeof FORMAT_DAYS_LABEL_ORDER)[number]) -
+      FORMAT_DAYS_LABEL_ORDER.indexOf(b as (typeof FORMAT_DAYS_LABEL_ORDER)[number])
+  );
+  return sorted.map((n) => FORMAT_DAYS_ABBREV[n] ?? "").filter(Boolean).join(", ");
+}
