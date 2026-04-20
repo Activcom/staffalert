@@ -11,7 +11,7 @@ type Props = {
 
 export function AlertOverlay({ alert, onDismiss, pendingCount = 0 }: Props) {
   const urgent = alert.type === "urgent";
-  useAlertBeep(urgent);
+  useAlertBeep(true);
 
   const bgClass = urgent ? "animate-pulse-urgent" : "animate-pulse-routine";
 

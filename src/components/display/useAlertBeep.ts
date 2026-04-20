@@ -2,13 +2,27 @@
 
 import { useEffect, useRef } from "react";
 
-const BIP_DURATION_S = 0.15;
-/** Début d’une paire → début de la suivante (660 Hz + 880 Hz puis pause). */
-const PAIR_INTERVAL_MS = 1500;
+/** Pulse 1 : Sol3. */
+const PULSE1_HZ = 392;
+/** Pulse 2 : Mi3. */
+const PULSE2_HZ = 330;
+const PULSE_DURATION_S = 0.12;
+/** Pulse 2 commence 150 ms après le début du pulse 1. */
+const PULSE2_OFFSET_S = 0.15;
+/** Pause après la fin du pulse 2 avant la paire suivante. */
+const PAUSE_AFTER_PAIR_S = 1.1;
+/** Fin pulse 2 → début de la paire suivante : 150ms + 120ms + 1100ms. */
+const PAIR_CYCLE_MS = (PULSE2_OFFSET_S + PULSE_DURATION_S + PAUSE_AFTER_PAIR_S) * 1000;
+
+const ATTACK_S = 0.008;
+const DECAY_S = 0.04;
+const SUSTAIN_LEVEL = 0.6;
+/** Filtre doux sur le bus (Chrome / tablette display). */
+const LOWPASS_HZ = 2000;
 
 /**
- * Double bip (sine 660 Hz puis 880 Hz) via Web Audio API — alertes urgentes.
- * Version simple : resume() depuis l’effet + setInterval (sans déblocage tactile).
+ * Son type « Impulsions » (Pulse) : deux pulses rapprochés, pause, boucle via Web Audio API.
+ * Une seule boucle / un seul AudioContext tant que `active` est vrai (pas d’empilement).
  */
 export function useAlertBeep(active: boolean) {
   const ctxRef = useRef<AudioContext | null>(null);
@@ -29,37 +43,55 @@ export function useAlertBeep(active: boolean) {
     const ctx = new AudioContextClass();
     ctxRef.current = ctx;
 
-    const gain = ctx.createGain();
-    gain.gain.value = 0.12;
-    gain.connect(ctx.destination);
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(LOWPASS_HZ, ctx.currentTime);
+    filter.Q.setValueAtTime(0.7, ctx.currentTime);
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 1.0;
+    filter.connect(masterGain);
+    masterGain.connect(ctx.destination);
 
     let intervalId: ReturnType<typeof setInterval> | undefined;
-    let secondBipTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
 
-    const beepAtFreq = (hz: number) => {
+    const schedulePulse = (frequencyHz: number, startTime: number) => {
       const osc = ctx.createOscillator();
       osc.type = "sine";
-      osc.frequency.value = hz;
-      osc.connect(gain);
-      osc.start();
-      osc.stop(ctx.currentTime + BIP_DURATION_S);
+      osc.frequency.setValueAtTime(frequencyHz, startTime);
+
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, startTime);
+      env.gain.linearRampToValueAtTime(1, startTime + ATTACK_S);
+      env.gain.linearRampToValueAtTime(SUSTAIN_LEVEL, startTime + ATTACK_S + DECAY_S);
+      env.gain.linearRampToValueAtTime(0.0001, startTime + PULSE_DURATION_S);
+
+      osc.connect(env);
+      env.connect(filter);
+      osc.start(startTime);
+      osc.stop(startTime + PULSE_DURATION_S);
     };
 
     const playPair = () => {
-      beepAtFreq(660);
-      secondBipTimeoutId = setTimeout(() => {
-        beepAtFreq(880);
-      }, BIP_DURATION_S * 1000);
+      const lead = 0.02;
+      const t0 = ctx.currentTime + lead;
+      schedulePulse(PULSE1_HZ, t0);
+      schedulePulse(PULSE2_HZ, t0 + PULSE2_OFFSET_S);
     };
 
     void ctx.resume().then(() => {
+      if (cancelled) return;
       playPair();
-      intervalId = setInterval(playPair, PAIR_INTERVAL_MS);
+      intervalId = setInterval(playPair, PAIR_CYCLE_MS);
     });
 
     return () => {
+      cancelled = true;
       if (intervalId !== undefined) clearInterval(intervalId);
-      if (secondBipTimeoutId !== undefined) clearTimeout(secondBipTimeoutId);
+      void ctx.suspend().catch(() => {
+        /* noop */
+      });
       void ctx.close();
       ctxRef.current = null;
     };
